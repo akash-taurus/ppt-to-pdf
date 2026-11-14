@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: python -m pip install --upgrade pip ruff
+
+      - name: Ruff
+        # Rule set is pinned explicitly so lint results do not drift with
+        # ruff's changing defaults or with config outside this repo.
+        run: ruff check --select E4,E7,E9,F --output-format=github .
+
+  check:
+    name: Check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Byte-compile the scripts
+        run: python -m py_compile gui.py ppt_to_pdf.py
+
+      - name: Import the converter module
+        run: python -c "import ppt_to_pdf; print(ppt_to_pdf.describe_backend())"
+
+      - name: CLI help loads
+        run: python ppt_to_pdf.py --help
